@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Slender Victims - Heights & Map</title>
+    <title>Slender 3D - Mountains & Map</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #000; color: white; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -12,44 +12,44 @@
         #hud { position: absolute; top: 20px; left: 20px; font-size: 22px; display: none; text-shadow: 2px 2px #000; z-index: 10; }
         #msg-overlay { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 40px; display: none; font-weight: bold; z-index: 200; pointer-events: none; }
         
-        /* Chat */
+        /* Minimapa */
+        #minimap { position: absolute; top: 20px; right: 20px; width: 160px; height: 160px; background: rgba(0,0,0,0.7); border: 2px solid #444; display: none; z-index: 30; }
+
+        /* Estilos del Chat */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 200px; background: rgba(0,0,0,0.5); display: none; flex-direction: column; z-index: 50; border: 1px solid #333; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 5px; font-size: 14px; display: flex; flex-direction: column; }
         #chat-input { background: rgba(20,20,20,0.8); border: none; border-top: 1px solid #333; color: white; padding: 8px; outline: none; }
         .chat-msg { margin-bottom: 4px; }
         .chat-system { color: #aaa; font-style: italic; }
-        
-        /* Minimapa */
-        #minimap { position: absolute; top: 20px; right: 20px; width: 150px; height: 150px; border: 2px solid #444; background: rgba(0,0,0,0.7); display: none; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div id="hud">PAGES: <span id="pageCount">0</span> / 8</div>
+    <div id="hud">PÁGINAS: <span id="pageCount">0</span> / 8</div>
     <div id="msg-overlay"></div>
-    <canvas id="minimap"></canvas>
+    <canvas id="minimap" width="160" height="160"></canvas>
 
     <div id="chat-container">
         <div id="chat-box"></div>
-        <input type="text" id="chat-input" placeholder="Escribe..." maxlength="50">
+        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="50">
     </div>
 
     <div id="ui">
         <h1>SLENDER 3D</h1>
         <div id="main-menu">
-            <button class="menu-btn" onclick="startSolo()">Single</button><br>
-            <button class="menu-btn" onclick="initMultiplayer(true)">Create Room</button><br>
-            <button class="menu-btn" onclick="showJoinInput()">Join</button>
+            <button class="menu-btn" onclick="startSolo()">Solitario</button><br>
+            <button class="menu-btn" onclick="initMultiplayer(true)">Crear Sala</button><br>
+            <button class="menu-btn" onclick="showJoinInput()">Unirse</button>
         </div>
         <div id="join-section" style="display:none;">
-            <input type="text" id="peer-id-input" placeholder="Host Id" style="padding:10px; width:80%;">
-            <button class="menu-btn" onclick="initMultiplayer(false)">Connect</button>
+            <input type="text" id="peer-id-input" placeholder="ID del Host" style="padding:10px; width:80%;">
+            <button class="menu-btn" onclick="initMultiplayer(false)">Conectar</button>
         </div>
         <div id="lobby" style="display:none;">
-            <h3 id="lobby-status">Connecting...</h3>
+            <h3 id="lobby-status">CONECTANDO...</h3>
             <p>ID: <b id="display-id" style="color:red">...</b></p>
             <div id="lobby-list" style="margin:10px; text-align:left;"></div>
-            <button id="start-btn" class="menu-btn" style="display:none;" onclick="broadcastStart()">Start Game</button>
+            <button id="start-btn" class="menu-btn" style="display:none;" onclick="broadcastStart()">Iniciar Partida</button>
         </div>
     </div>
 
@@ -60,28 +60,32 @@
         const ctx = canvas.getContext('2d');
         const mCanvas = document.getElementById('minimap');
         const mCtx = mCanvas.getContext('2d');
+        
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
         const GameContentSlender = { PersonSpriteheh: new Image() };
         GameContentSlender.PersonSpriteheh.src = "PersonSpriteheh.jpg";
 
+        // Configuración de Colores Secuenciales
+        const COLORS = ["#ff0000", "#0088ff", "#00ff00", "#ffaa00", "#ff00ff"];
+
         const TILE_SIZE = 64;
         const FOV = Math.PI / 3;
-        const MAP_SIZE = 20;
+        const MAP_SIZE = 30; // Mapa más grande
         
-        // 0: Suelo, 1: Muro, 2: Montaña (Altura)
+        // 0: Suelo, 1: Muro, 2: Montaña
         const worldMap = Array.from({length: MAP_SIZE}, (_, i) => 
             Array.from({length: MAP_SIZE}, (_, j) => {
                 if (i===0 || i===MAP_SIZE-1 || j===0 || j===MAP_SIZE-1) return 1;
-                if (Math.random() > 0.9) return 2; // Montañas aleatorias
+                // Generar "montañas" aleatorias
+                if (i > 5 && i < 25 && j > 5 && j < 25 && Math.random() > 0.92) return 2;
                 return 0;
             })
         );
 
-        const VICTIM_COLORS = ["#ff0000", "#0066ff", "#00ff00", "#ffff00", "#ff00ff", "#00ffff"];
-        let player = { name: "Victim 1", x: 150, y: 150, dir: 0, speed: 3, rotSpeed: 0.05, dead: false, color: "#ff0000", z: 0 };
-        let remotePlayer = { name: "Victim 2", x: -200, y: -200, dir: 0, active: false, dead: false, color: "#0066ff", z: 0 };
+        let player = { name: "Victim 1", x: 150, y: 150, z: 0, dir: 0, speed: 3, rotSpeed: 0.05, dead: false, color: COLORS[0] };
+        let remotePlayer = { name: "Victim 2", x: -200, y: -200, z: 0, dir: 0, active: false, dead: false, color: COLORS[1] };
         let slender = { x: 500, y: 500, speed: 1.2 };
         let pages = [];
         let collectedPages = 0;
@@ -93,15 +97,17 @@
             const box = document.getElementById('chat-box');
             const div = document.createElement('div');
             div.className = isSystem ? 'chat-msg chat-system' : 'chat-msg';
-            div.innerHTML = isSystem ? msg : `<span style="color:${user===player.name?player.color:remotePlayer.color}">${user}:</span> ${msg}`;
+            const color = user === player.name ? player.color : remotePlayer.color;
+            div.innerHTML = isSystem ? msg : `<span style="color:${color}; font-weight:bold">${user}:</span> ${msg}`;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         }
 
         document.getElementById('chat-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && e.target.value.trim() !== "") {
-                addChatMessage(player.name, e.target.value);
-                if (conn && conn.open) conn.send({ type: 'CHAT', user: player.name, msg: e.target.value });
+                const msg = e.target.value;
+                addChatMessage(player.name, msg);
+                if (conn && conn.open) conn.send({ type: 'CHAT', user: player.name, msg: msg });
                 e.target.value = "";
             }
         });
@@ -113,11 +119,10 @@
 
         function initMultiplayer(asHost) {
             isHost = asHost;
-            const index = isHost ? 0 : 1;
-            player.name = `Victim ${index + 1}`;
-            player.color = VICTIM_COLORS[index];
-            remotePlayer.name = `Victim ${isHost ? 2 : 1}`;
-            remotePlayer.color = VICTIM_COLORS[isHost ? 1 : 0];
+            player.name = isHost ? "Victim 1" : "Victim 2";
+            player.color = isHost ? COLORS[0] : COLORS[1];
+            remotePlayer.name = isHost ? "Victim 2" : "Victim 1";
+            remotePlayer.color = isHost ? COLORS[1] : COLORS[0];
 
             peer = new Peer();
             document.getElementById('main-menu').style.display = 'none';
@@ -135,9 +140,9 @@
             peer.on('connection', c => {
                 conn = c; setupConnection();
                 if(isHost) { 
-                    remotePlayer.active = true;
+                    remotePlayer.active = true; 
                     document.getElementById('start-btn').style.display = 'inline-block';
-                    document.getElementById('lobby-list').innerHTML += `<br>• ${remotePlayer.name} (Ready)`;
+                    document.getElementById('lobby-list').innerHTML += `<br>• ${remotePlayer.name} (Listo)`;
                 }
             });
         }
@@ -152,13 +157,22 @@
                     remotePlayer.dead = data.dead; remotePlayer.active = true;
                     if(!isHost && data.sx !== undefined) { slender.x = data.sx; slender.y = data.sy; }
                 }
-                if(data.type === 'COLLECT') { pages[data.index].collected = true; checkPages(); }
+                if(data.type === 'COLLECT') { 
+                    pages[data.index].collected = true; 
+                    addChatMessage("", "¡Se ha recogido una página!", true);
+                    checkPages(); 
+                }
             });
         }
 
         function broadcastStart() {
-            for(let i=0; i<8; i++) pages.push({ x: Math.random()*800+100, y: Math.random()*800+100, collected: false });
-            if(conn) { conn.send({ type: 'PAGES_DATA', pages: pages }); conn.send({ type: 'START' }); }
+            for(let i=0; i<8; i++) {
+                pages.push({ x: Math.random()*(MAP_SIZE*TILE_SIZE-200)+100, y: Math.random()*(MAP_SIZE*TILE_SIZE-200)+100, collected: false });
+            }
+            if(conn) {
+                conn.send({ type: 'PAGES_DATA', pages: pages });
+                conn.send({ type: 'START' });
+            }
             startGame();
         }
 
@@ -179,22 +193,28 @@
             if(!player.dead) {
                 if(keys['a'] || keys['arrowleft']) player.dir -= player.rotSpeed;
                 if(keys['d'] || keys['arrowright']) player.dir += player.rotSpeed;
+                
                 let moveX = Math.cos(player.dir) * player.speed;
                 let moveY = Math.sin(player.dir) * player.speed;
-                
-                let nextX = player.x + (keys['w'] ? moveX : keys['s'] ? -moveX : 0);
-                let nextY = player.y + (keys['w'] ? moveY : keys['s'] ? -moveY : 0);
+                let nextX = player.x, nextY = player.y;
 
-                let tile = worldMap[Math.floor(nextY/TILE_SIZE)][Math.floor(nextX/TILE_SIZE)];
-                
-                if(tile !== 1) { // No es pared
+                if(keys['w'] || keys['arrowup']) { nextX += moveX; nextY += moveY; }
+                if(keys['s'] || keys['arrowdown']) { nextX -= moveX; nextY -= moveY; }
+
+                let gridX = Math.floor(nextX/TILE_SIZE);
+                let gridY = Math.floor(nextY/TILE_SIZE);
+
+                if(worldMap[gridY][gridX] !== 1) {
                     player.x = nextX;
                     player.y = nextY;
-                    // Efecto Doom: Si es montaña (2), subimos la cámara
-                    player.z = (tile === 2) ? 40 : 0;
+                    // Lógica de Montaña (Altura estilo Doom)
+                    player.z = (worldMap[gridY][gridX] === 2) ? 30 : 0;
                 }
 
-                if(Math.hypot(player.x - slender.x, player.y - slender.y) < 30) player.dead = true;
+                if(Math.hypot(player.x - slender.x, player.y - slender.y) < 30) {
+                    player.dead = true;
+                    addChatMessage("", "¡HAS MUERTO!", true);
+                }
             }
 
             if(isHost) {
@@ -217,31 +237,50 @@
             }
         }
 
+        function drawMinimap() {
+            mCtx.fillStyle = "black"; mCtx.fillRect(0,0,160,160);
+            const scale = 160 / (MAP_SIZE * TILE_SIZE);
+            
+            for(let y=0; y<MAP_SIZE; y++) {
+                for(let x=0; x<MAP_SIZE; x++) {
+                    if(worldMap[y][x] === 1) { mCtx.fillStyle = "#400"; mCtx.fillRect(x*TILE_SIZE*scale, y*TILE_SIZE*scale, TILE_SIZE*scale, TILE_SIZE*scale); }
+                    if(worldMap[y][x] === 2) { mCtx.fillStyle = "#440"; mCtx.fillRect(x*TILE_SIZE*scale, y*TILE_SIZE*scale, TILE_SIZE*scale, TILE_SIZE*scale); }
+                }
+            }
+            // Jugadores
+            mCtx.fillStyle = player.color; mCtx.fillRect(player.x*scale-2, player.y*scale-2, 4, 4);
+            if(remotePlayer.active) { mCtx.fillStyle = remotePlayer.color; mCtx.fillRect(remotePlayer.x*scale-2, remotePlayer.y*scale-2, 4, 4); }
+            // Slender
+            mCtx.fillStyle = "white"; mCtx.fillRect(slender.x*scale-2, slender.y*scale-2, 4, 4);
+        }
+
         function draw() {
-            // Fondo con altura
+            // Fondo
             ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height/2 + player.z);
             ctx.fillStyle = "#111"; ctx.fillRect(0, canvas.height/2 + player.z, canvas.width, canvas.height/2 - player.z);
 
+            // Raycasting
             for(let i=0; i<canvas.width; i+=4) {
                 let rayAngle = (player.dir - FOV/2) + (i/canvas.width) * FOV;
                 let dist = 0; let hit = 0;
-                while(hit === 0 && dist < 800) {
+                while(hit === 0 && dist < 1000) {
                     dist += 4;
                     let tx = Math.floor((player.x + Math.cos(rayAngle) * dist) / TILE_SIZE);
                     let ty = Math.floor((player.y + Math.sin(rayAngle) * dist) / TILE_SIZE);
+                    if(tx<0||ty<0||tx>=MAP_SIZE||ty>=MAP_SIZE) break;
                     hit = worldMap[ty][tx];
                 }
                 dist *= Math.cos(player.dir - rayAngle);
                 let h = (TILE_SIZE * canvas.height) / dist;
-                ctx.fillStyle = hit === 2 ? `rgb(60, 40, 20)` : `rgb(${10000/dist}, 0, 0)`;
-                // Ajustamos la posición vertical de la pared según la altura del jugador
+                ctx.fillStyle = hit === 2 ? `rgb(60, 50, 20)` : `rgb(${Math.max(0, 150 - dist/5)}, 0, 0)`;
                 ctx.fillRect(i, (canvas.height - h)/2 + player.z, 4, h);
             }
 
+            // Sprites
             const sprites = [];
-            pages.forEach(p => { if(!p.collected) sprites.push({x: p.x, y: p.y, type: 'page'}); });
+            pages.forEach(p => { if(!p.collected) sprites.push({x: p.x, y: p.y, z: 0, type: 'page'}); });
             if(remotePlayer.active) sprites.push({x: remotePlayer.x, y: remotePlayer.y, z: remotePlayer.z, type: 'victim'});
-            sprites.push({x: slender.x, y: slender.y, type: 'slender'});
+            sprites.push({x: slender.x, y: slender.y, z: 0, type: 'slender'});
 
             sprites.sort((a,b) => Math.hypot(player.x-b.x, player.y-b.y) - Math.hypot(player.x-a.x, player.y-a.y));
 
@@ -254,41 +293,45 @@
                 if(Math.abs(angle) < FOV) {
                     let sx = (0.5 * (angle / (FOV/2)) + 0.5) * canvas.width;
                     let h = (TILE_SIZE * canvas.height) / (dist * Math.cos(angle));
-                    let sz = (s.z || 0) - player.z; // Diferencia de altura
-                    let vy = (canvas.height - h)/2 + sz * (500/dist) + player.z;
+                    let spriteZ = (s.z - player.z) * (canvas.height/dist); // Diferencia de altura
+                    let sy = (canvas.height - h)/2 + spriteZ + player.z;
 
                     if(s.type === 'slender') {
-                        ctx.fillStyle = "black"; ctx.fillRect(sx - h/4, vy, h/2, h);
+                        ctx.fillStyle = "black"; ctx.fillRect(sx - h/4, sy, h/2, h);
+                        ctx.fillStyle = "white"; ctx.fillRect(sx - h/6, sy - h/6, h/3, h/6);
                     } else if(s.type === 'page') {
-                        ctx.fillStyle = "white"; ctx.fillRect(sx - h/10, vy + h/2, h/5, h/4);
+                        ctx.fillStyle = "white"; ctx.fillRect(sx - h/10, sy + h/2, h/5, h/4);
                     } else if(s.type === 'victim') {
                         ctx.save();
                         if(remotePlayer.dead) ctx.globalAlpha = 0.2;
-                        ctx.drawImage(GameContentSlender.PersonSpriteheh, sx - h/2, vy, h, h);
-                        ctx.fillStyle = remotePlayer.color + "66"; ctx.fillRect(sx - h/2, vy, h, h);
+                        ctx.drawImage(GameContentSlender.PersonSpriteheh, sx - h/2, sy, h, h);
+                        ctx.fillStyle = remotePlayer.color + "66"; ctx.fillRect(sx - h/2, sy, h, h);
                         ctx.restore();
                     }
                 }
             });
+            
+            if(player.dead) { ctx.fillStyle = "rgba(100,0,0,0.5)"; ctx.fillRect(0,0,canvas.width,canvas.height); }
             drawMinimap();
-        }
-
-        function drawMinimap() {
-            mCtx.clearRect(0,0,150,150);
-            const s = 150 / (MAP_SIZE * TILE_SIZE);
-            worldMap.forEach((row, y) => row.forEach((v, x) => {
-                if(v!==0) { mCtx.fillStyle = v===1?"#500":"#430"; mCtx.fillRect(x*TILE_SIZE*s, y*TILE_SIZE*s, TILE_SIZE*s, TILE_SIZE*s); }
-            }));
-            mCtx.fillStyle = player.color; mCtx.fillRect(player.x*s-2, player.y*s-2, 4, 4);
-            if(remotePlayer.active) { mCtx.fillStyle = remotePlayer.color; mCtx.fillRect(remotePlayer.x*s-2, remotePlayer.y*s-2, 4, 4); }
-            mCtx.fillStyle = "white"; mCtx.fillRect(slender.x*s-2, slender.y*s-2, 4, 4);
         }
 
         const keys = {};
         window.onkeydown = e => keys[e.key.toLowerCase()] = true;
         window.onkeyup = e => keys[e.key.toLowerCase()] = false;
-        function checkPages() { collectedPages = pages.filter(p => p.collected).length; document.getElementById('pageCount').innerText = collectedPages; if(collectedPages >= 8) showEndMsg("YOU ESCAPED", "#0f0"); }
-        function showEndMsg(txt, color) { gameRunning = false; const o = document.getElementById('msg-overlay'); o.innerText = txt; o.style.color = color; o.style.display = "block"; setTimeout(() => location.reload(), 5000); }
+
+        function checkPages() {
+            collectedPages = pages.filter(p => p.collected).length;
+            document.getElementById('pageCount').innerText = collectedPages;
+            if(collectedPages >= 8) showEndMsg("HAS ESCAPADO", "#0f0");
+        }
+
+        function showEndMsg(txt, color) {
+            gameRunning = false;
+            const msg = document.getElementById('msg-overlay');
+            msg.innerText = txt; msg.style.color = color; msg.style.display = "block";
+            setTimeout(() => location.reload(), 5000);
+        }
+
         function gameLoop() { update(); draw(); if(gameRunning) requestAnimationFrame(gameLoop); }
     </script>
 </body>
